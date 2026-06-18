@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest an idea for oneop
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: The dev-ops pain you're hitting. Concrete beats abstract.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would you like oneop to do?
+    validations:
+      required: true
+  - type: checkboxes
+    id: secrets
+    attributes:
+      label: Secret-safety
+      options:
+        - label: This can be done without oneop storing any real secret (pointers only).
+          required: true

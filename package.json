@@ -1,0 +1,54 @@
+{
+  "name": "oneop",
+  "version": "0.1.0",
+  "private": false,
+  "license": "MIT",
+  "description": "1Password's chaotic dev cousin. One place for every app's dev/staging/prod URLs and where the creds live — without ever storing a secret.",
+  "keywords": [
+    "developer-tools",
+    "cli",
+    "dashboard",
+    "dotenv",
+    "secrets",
+    "dx",
+    "monorepo",
+    "nextjs"
+  ],
+  "homepage": "https://oneop.dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jde/oneop.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jde/oneop/issues"
+  },
+  "author": "jde",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "oneop": "bin/oneop"
+  },
+  "scripts": {
+    "dev": "next dev -p 1134",
+    "build": "next build",
+    "start": "next start -p 1134",
+    "oneop": "tsx bin/cli.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "next": "^15.1.6",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "tsx": "^4.22.4",
+    "typescript": "^5.7.3"
+  }
+}
