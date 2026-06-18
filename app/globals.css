@@ -194,6 +194,34 @@ header.top .tag {
   font-size: 11px;
 }
 
+.data {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.data-title {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.data-cmd {
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.data-cmd b {
+  color: var(--accent);
+}
+.data-cmd em {
+  color: var(--muted);
+  font-style: normal;
+}
+
 .envs {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));

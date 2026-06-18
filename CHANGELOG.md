@@ -6,6 +6,16 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **Enforced data standard.** A playbook declares two scripts — `data.reset`
+  (clear DB + load baseline: categories/tags/types/base data) and `data.seed`
+  (userland sample data on top). `oneop check [app]` reports compliance and exits
+  non-zero (CI-gateable); `oneop data <app> reset|seed|fresh` runs them in order
+  (`fresh` = reset then seed), refusing TODO placeholders and warning when there's
+  no baseline. `oneop init` now scaffolds both (TODOs where missing) and the
+  dashboard shows the data row.
+
 ### Fixed
 
 - `oneop init --link` now symlinks playbooks that **already exist**, not only

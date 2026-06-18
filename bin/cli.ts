@@ -26,7 +26,7 @@ import YAML from "yaml";
 import { loadPlaybooks } from "../lib/playbooks";
 import { planEnv, renderEnvBlock } from "../lib/env";
 import { findProjects, detectProject, starterPlaybook } from "../lib/detect";
-import type { Playbook } from "../lib/schema";
+import { checkDataStandard, type Playbook } from "../lib/schema";
 import {
   appendLogSync,
   detectLevel,
@@ -90,6 +90,8 @@ const HELP = `oneop — your dev keyring + agent collaboration kit
   oneop list
   oneop creds <app> [--env dev] [--reveal|--json]
   oneop env   <app> [--write] [--json]
+  oneop check [app] [--json]                    enforce the data standard (reset + seed)
+  oneop data  <app> <reset|seed|fresh>          run data work in the right order
   oneop run   <app> [--env dev]
   oneop logs  <app> [--errors] [--since 5m] [--follow] [--json] [--lines N]
 `;
@@ -271,6 +273,63 @@ async function cmdEnv(name: string, flags: Flags) {
   }
 }
 
+async function cmdCheck(name: string | undefined, flags: Flags) {
+  const { playbooks } = await loadPlaybooks();
+  const targets = name ? playbooks.filter((p) => p.app === name) : playbooks;
+  if (!targets.length) die(name ? `unknown app "${name}"` : "no playbooks found");
+
+  const checks = targets.map(checkDataStandard);
+  if (flags.json) return out(checks);
+
+  let failed = 0;
+  for (const c of checks) {
+    if (c.ok) {
+      console.log(`  ✓ ${c.app.padEnd(22)} data standard ok (reset + seed)`);
+    } else {
+      failed++;
+      console.log(`  ✗ ${c.app}`);
+      for (const i of c.issues) console.log(`      ${i}`);
+    }
+  }
+  console.log(`\n${checks.length - failed}/${checks.length} apps meet the data standard.`);
+  if (failed) process.exitCode = 1; // so CI can gate on `oneop check`
+}
+
+/** Run a shell command in cwd, streaming output. Resolves the exit code. */
+function runShell(cmd: string, cwd: string): Promise<number> {
+  console.error(`oneop: ${cmd}  (in ${cwd})`);
+  return new Promise((resolve) => {
+    const child = spawn(cmd, { cwd, shell: true, stdio: "inherit" });
+    child.on("exit", (code) => resolve(code ?? 0));
+  });
+}
+
+async function cmdData(name: string, action: string | undefined, flags: Flags) {
+  const pb = await findApp(name);
+  const d = pb.data;
+  const act = (action || "fresh").toLowerCase();
+  if (!["reset", "seed", "fresh"].includes(act)) die(`usage: oneop data <app> <reset|seed|fresh>`);
+  if (!d || (!d.reset && !d.seed)) die(`${name} declares no data standard. Add data.reset + data.seed (see oneop check).`);
+
+  const root = repoRoot(pb);
+  const steps: { label: string; cmd?: string }[] = [];
+  if (act === "reset" || act === "fresh") steps.push({ label: "reset (baseline)", cmd: d.reset });
+  if (act === "seed" || act === "fresh") steps.push({ label: "seed (userland)", cmd: d.seed });
+
+  // Enforce order + the standard: refuse to seed onto an undefined baseline.
+  if ((act === "seed" || act === "fresh") && !d.reset) {
+    console.error(`oneop: warning — ${name} has no data.reset, so there's no defined baseline under this seed.`);
+  }
+  for (const s of steps) {
+    if (!s.cmd || s.cmd.startsWith("TODO")) {
+      die(`${name} has no real ${s.label.split(" ")[0]} command yet (it's a TODO). Define data.${s.label.split(" ")[0]}.`);
+    }
+    const code = await runShell(s.cmd, root);
+    if (code !== 0) die(`${s.label} failed (exit ${code}) — stopping.`);
+  }
+  console.log(`✓ ${name}: ${act} complete.`);
+}
+
 async function cmdRun(name: string, flags: Flags) {
   const pb = await findApp(name);
   const env = envName(flags);
@@ -337,6 +396,10 @@ async function main() {
       return cmdCreds(positional[0] ?? die("usage: oneop creds <app>"), flags);
     case "env":
       return cmdEnv(positional[0] ?? die("usage: oneop env <app> [--write]"), flags);
+    case "check":
+      return cmdCheck(positional[0], flags);
+    case "data":
+      return cmdData(positional[0] ?? die("usage: oneop data <app> <reset|seed|fresh>"), positional[1], flags);
     case "run":
       return cmdRun(positional[0] ?? die("usage: oneop run <app>"), flags);
     case "logs":

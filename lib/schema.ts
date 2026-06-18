@@ -69,6 +69,23 @@ export interface Dependency {
   seed?: boolean;
 }
 
+/**
+ * The two-script data standard oneop enforces for dev work:
+ *
+ *   reset → clears the DB and loads the app BASELINE: the categories, tags,
+ *           types, required image uploads, and base data the app needs to
+ *           function at all. Deterministic foundation — "factory, no users".
+ *   seed  → adds USERLAND sample data on top (assumes reset has run) so the app
+ *           runs in a realistic, non-empty state.
+ *
+ * `oneop check` flags any app missing either; `oneop data <app> fresh` runs
+ * them in the correct order (reset, then seed).
+ */
+export interface DataStandard {
+  reset?: string; // clear + baseline
+  seed?: string; // userland sample data on top of baseline
+}
+
 export interface Playbook {
   app: string;
   description?: string;
@@ -81,6 +98,8 @@ export interface Playbook {
   commands?: Command[];
   /** Local dev dependencies oneop can stand up + wire into .env. */
   dependencies?: Dependency[];
+  /** The enforced two-script data standard: reset (baseline) + seed (userland). */
+  data?: DataStandard;
   envs: Partial<Record<"dev" | "staging" | "prod", EnvSpec>>;
   /** Third-party services/accounts (Stripe, Sentry, …) — names & dashboards, never keys. */
   integrations?: Integration[];
@@ -130,6 +149,39 @@ export class PlaybookSecretError extends Error {
     );
     this.name = "PlaybookSecretError";
   }
+}
+
+export interface DataCheck {
+  app: string;
+  ok: boolean;
+  issues: string[];
+}
+
+/**
+ * Enforce the two-script data standard. An app that declares data work must
+ * define BOTH reset (baseline) and seed (userland). `seed` without `reset` is
+ * the classic anti-pattern (a seed that quietly resets, or no clean baseline).
+ */
+export function checkDataStandard(pb: Playbook): DataCheck {
+  const issues: string[] = [];
+  const d = pb.data;
+  // A TODO placeholder (from `oneop init`) is not a real command.
+  const real = (s?: string) => !!s && !s.trim().startsWith("TODO");
+  const hasReset = real(d?.reset);
+  const hasSeed = real(d?.seed);
+  // A legacy single seedCmd counts as "doing data work" but not following the standard.
+  const legacySeed = Object.values(pb.envs).some((e) => e?.seedCmd);
+
+  if (!hasReset && !hasSeed) {
+    if (legacySeed) issues.push("uses envs.*.seedCmd but no data.reset/seed — adopt the two-script standard");
+    else if (d) issues.push("data.reset and data.seed are still TODO — fill them in");
+    else issues.push("no data work declared (add data.reset + data.seed if this app has a database)");
+  } else {
+    if (!hasReset) issues.push("missing data.reset (clear DB + load baseline: categories/tags/types/base data)");
+    if (!hasSeed) issues.push("missing data.seed (userland sample data on top of baseline)");
+  }
+  const ok = hasReset && hasSeed;
+  return { app: pb.app, ok, issues: ok ? [] : issues };
 }
 
 /** Minimal shape validation so the dashboard fails loud, not weird. */

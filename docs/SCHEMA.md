@@ -59,6 +59,27 @@ integrations:
 | `vault` | staging / prod | `vaultItem:` — the 1Password item NAME, never its contents |
 | `inline-nonsecret` | dev with no auth | `note:` — e.g. "no auth in dev" |
 
+## The data standard (enforced)
+
+Every app with a database declares **two** scripts — oneop holds the line via
+`oneop check`:
+
+```yaml
+data:
+  reset: pnpm db:reset   # clears the DB + loads the BASELINE
+  seed: pnpm db:seed     # adds USERLAND sample data on top
+```
+
+| Script | Clears DB? | Loads | Mental model |
+|---|---|---|---|
+| `reset` | yes | Baseline: categories, tags, types, required image uploads, base data | "factory, no users" |
+| `seed` | no (assumes reset ran) | Userland sample data so the app isn't empty | "as if people have used it" |
+
+- `oneop check [app]` reports compliance and exits non-zero if any app is
+  missing either — so CI can gate on it.
+- `oneop data <app> reset|seed|fresh` runs them; `fresh` = reset then seed, in
+  order. It refuses a `TODO` placeholder and warns if you seed with no baseline.
+
 ## The one rule
 
 If a value would be unsafe in a public repo, it does not go in `playbook.yaml`.

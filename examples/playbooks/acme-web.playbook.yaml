@@ -19,6 +19,13 @@ commands:
     run: pnpm db:reset && pnpm db:seed
     cwd: packages/db
 
+# The enforced two-script data standard for dev:
+#   reset → clear DB + load the app BASELINE (categories/tags/types/base data)
+#   seed  → add USERLAND sample data on top so it's not an empty app
+data:
+  reset: pnpm db:reset
+  seed: pnpm db:seed
+
 # Local dev dependencies oneop stands up and wires into .env.
 # Connection strings here are LOCAL + PUBLIC (localhost, default local creds).
 dependencies:
@@ -51,7 +58,6 @@ envs:
   dev:
     url: http://localhost:3000
     start: pnpm dev
-    seedCmd: pnpm db:seed
     accounts:
       source: seed
       seedFile: ../seeds/acme-web.seed.ts # dev logins live in committed code

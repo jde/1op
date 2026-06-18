@@ -128,6 +128,8 @@ oneop creds acme-web --json             # structured, for an agent to drive with
 oneop creds acme-web --env prod --json  # POINTER ONLY — oneop never holds prod creds
 oneop env  acme-web                     # preview .env from declared deps (dry run)
 oneop env  acme-web --write             # write missing dep keys — never clobbers yours
+oneop check                             # enforce the data standard across all apps (CI-gateable)
+oneop data acme-web fresh               # reset (baseline) then seed (userland), in order
 oneop run  acme-web                     # run its start cmd, capturing logs
 oneop logs acme-web --errors --since 5m --json   # you OR the agent read live errors
 ```

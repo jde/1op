@@ -84,6 +84,22 @@ async function AppCard({ pb }: { pb: Playbook }) {
         </div>
       )}
 
+      {pb.data && (pb.data.reset || pb.data.seed) && (
+        <div className="data">
+          <span className="data-title">data</span>
+          {pb.data.reset && (
+            <span className="data-cmd">
+              <b>reset</b> <code>{pb.data.reset}</code> <em>baseline</em>
+            </span>
+          )}
+          {pb.data.seed && (
+            <span className="data-cmd">
+              <b>seed</b> <code>{pb.data.seed}</code> <em>userland</em>
+            </span>
+          )}
+        </div>
+      )}
+
       <div className="envs">
         {ENV_ORDER.filter((name) => pb.envs[name]).map((name) => (
           <EnvCell key={name} name={name} env={pb.envs[name]!} pb={pb} />

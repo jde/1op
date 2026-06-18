@@ -14,7 +14,8 @@ export interface Detected {
   start?: string;
   url?: string;
   seedFile?: string;
-  seedCmd?: string;
+  resetCmd?: string; // db:reset — clear + baseline
+  seedCmd?: string; // db:seed — userland
 }
 
 /** Immediate subdirectories of `root` that look like a project. */
@@ -100,6 +101,13 @@ export function detectProject(dir: string): Detected {
       break;
     }
   }
+  let resetCmd: string | undefined;
+  for (const k of ["db:reset", "reset:db", "reset"]) {
+    if (scripts[k]) {
+      resetCmd = runCmd(pm, k);
+      break;
+    }
+  }
   let seedCmd: string | undefined;
   for (const k of ["db:seed", "seed", "prisma:seed"]) {
     if (scripts[k]) {
@@ -108,7 +116,7 @@ export function detectProject(dir: string): Detected {
     }
   }
 
-  return { dir, app, packageManager: pm, start, url, seedFile, seedCmd };
+  return { dir, app, packageManager: pm, start, url, seedFile, resetCmd, seedCmd };
 }
 
 /** Build the starter playbook object (to be YAML-stringified). Pointers only. */
@@ -116,13 +124,17 @@ export function starterPlaybook(d: Detected): Record<string, unknown> {
   const dev: Record<string, unknown> = {};
   if (d.url) dev.url = d.url;
   if (d.start) dev.start = d.start;
-  if (d.seedCmd) dev.seedCmd = d.seedCmd;
   dev.accounts = d.seedFile
     ? { source: "seed", seedFile: d.seedFile, users: [] }
     : { source: "inline-nonsecret", note: "TODO: how do you log in to dev?" };
 
   const pb: Record<string, unknown> = { app: d.app };
   if (d.packageManager) pb.packageManager = d.packageManager;
+  // Enforce the two-script data standard: always scaffold both, TODO what's missing.
+  pb.data = {
+    reset: d.resetCmd ?? "TODO: clear DB + load baseline (categories/tags/types/base data)",
+    seed: d.seedCmd ?? "TODO: add userland sample data on top of baseline",
+  };
   pb.envs = {
     dev,
     staging: { url: "TODO", accounts: { source: "vault", vaultItem: `${d.app} — staging` } },
