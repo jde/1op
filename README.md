@@ -93,10 +93,20 @@ oneop init ~/code --link     # create the files AND symlink them into ~/playbook
 export ONEOP_PLAYBOOKS_DIR="$HOME/playbooks" && pnpm dev   # see them on the dashboard
 ```
 
-It skips any repo that already has a playbook, gitignores the
-`.ops/*.local.yaml` overlay, and leaves `TODO`s where it needs a human (staging
-URLs, which 1Password item, your seeded dev users). Fill those in per
+It skips any repo that already has a playbook (but with `--link` it will still
+symlink an existing one), gitignores the `.ops/*.local.yaml` overlay, excludes
+the oneop repo itself, and leaves `TODO`s where it needs a human (staging URLs,
+which 1Password item, your seeded dev users). Fill those in per
 [`docs/SCHEMA.md`](docs/SCHEMA.md).
+
+```sh
+oneop init ~/code --link --exclude legacy,scratch   # skip specific folders by name
+```
+
+> An app's dashboard name comes from its `package.json` `name`, which can differ
+> from the folder name (e.g. a `fractal/` directory whose package is `jde.com`
+> shows up as **jde.com**). That's intentional — one playbook per repo, keyed by
+> the package.
 
 ### Rich path: the `generate-playbook` skill
 

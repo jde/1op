@@ -86,7 +86,7 @@ function repoRoot(pb: Playbook): string {
 
 const HELP = `oneop — your dev keyring + agent collaboration kit
 
-  oneop init  [dir] [--link] [--dry] [--json]   scaffold playbooks for every project under dir
+  oneop init  [dir] [--link] [--dry] [--exclude a,b] [--json]   scaffold playbooks for every project under dir
   oneop list
   oneop creds <app> [--env dev] [--reveal|--json]
   oneop env   <app> [--write] [--json]
@@ -111,6 +111,23 @@ function ensureOverlayIgnored(dir: string) {
   if (!cur.includes(line)) appendFileSync(gi, `${cur && !cur.endsWith("\n") ? "\n" : ""}\n# oneop: sensitive overlay, never commit\n${line}\n`);
 }
 
+/** Symlink a playbook into the link dir (idempotent). */
+function linkPlaybook(opsFile: string, app: string, linkDir: string): boolean {
+  mkdirSync(linkDir, { recursive: true });
+  const target = path.join(linkDir, `${app}.playbook.yaml`);
+  try {
+    if (!existsSync(target)) symlinkSync(opsFile, target);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** The oneop repo itself — never scaffold into it. */
+function selfRepoRoot(): string {
+  return path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
+}
+
 async function cmdInit(dirArg: string | undefined, flags: Flags) {
   const root = path.resolve(dirArg || process.cwd());
   const projects = findProjects(root);
@@ -118,15 +135,37 @@ async function cmdInit(dirArg: string | undefined, flags: Flags) {
 
   const link = !!flags.link;
   const linkDir = playbooksLinkDir();
+  const self = selfRepoRoot();
+  const exclude = new Set(
+    String(flags.exclude || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
+  );
   const results: { app: string; status: string; detail: string }[] = [];
 
   for (const dir of projects) {
-    const opsFile = path.join(dir, ".ops", "playbook.yaml");
-    const d = detectProject(dir);
-    if (existsSync(opsFile)) {
-      results.push({ app: d.app, status: "skip", detail: "already has .ops/playbook.yaml" });
+    // Never scaffold into oneop itself, or anything the user excluded.
+    if (path.resolve(dir) === self || exclude.has(path.basename(dir))) {
+      results.push({ app: path.basename(dir), status: "excluded", detail: "" });
       continue;
     }
+
+    const opsFile = path.join(dir, ".ops", "playbook.yaml");
+    const d = detectProject(dir);
+    const exists = existsSync(opsFile);
+
+    // Already onboarded: don't rewrite, but DO link it if asked (the missing-link bug).
+    if (exists) {
+      const linked = link && !flags.dry ? linkPlaybook(opsFile, d.app, linkDir) : false;
+      results.push({
+        app: d.app,
+        status: link ? "exists→linked" : "skip",
+        detail: linked ? "symlinked existing playbook" : "already has .ops/playbook.yaml",
+      });
+      continue;
+    }
+
     const yamlStr = STARTER_HEADER + YAML.stringify(starterPlaybook(d));
     const detail = `${d.start ?? "no dev cmd"}${d.url ? "  " + d.url : ""}${d.seedFile ? "  seed:" + d.seedFile : ""}`;
 
@@ -137,23 +176,16 @@ async function cmdInit(dirArg: string | undefined, flags: Flags) {
     mkdirSync(path.join(dir, ".ops"), { recursive: true });
     writeFileSync(opsFile, yamlStr, "utf8");
     ensureOverlayIgnored(dir);
-    if (link) {
-      mkdirSync(linkDir, { recursive: true });
-      const target = path.join(linkDir, `${d.app}.playbook.yaml`);
-      try {
-        if (!existsSync(target)) symlinkSync(opsFile, target);
-      } catch {
-        /* symlink best-effort */
-      }
-    }
+    if (link) linkPlaybook(opsFile, d.app, linkDir);
     results.push({ app: d.app, status: "created", detail });
   }
 
   if (flags.json) return out({ root, linkDir: link ? linkDir : null, results });
   console.log(`oneop init: scanned ${root} — ${projects.length} project(s)${flags.dry ? " (dry run)" : ""}\n`);
   for (const r of results) {
-    const mark = r.status === "created" ? "✓" : r.status === "skip" ? "·" : "○";
-    console.log(`  ${mark} ${r.app.padEnd(22)} ${r.status.padEnd(13)} ${r.detail}`);
+    const mark =
+      r.status === "created" ? "✓" : r.status.startsWith("exists") ? "→" : r.status === "excluded" ? "✗" : r.status === "skip" ? "·" : "○";
+    console.log(`  ${mark} ${r.app.padEnd(22)} ${r.status.padEnd(14)} ${r.detail}`);
   }
   if (!flags.dry) {
     console.log(`\nNext: fill the TODOs in each .ops/playbook.yaml, then point the dashboard at them:`);

@@ -6,6 +6,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- `oneop init --link` now symlinks playbooks that **already exist**, not only
+  freshly-created ones — so a re-run or partial onboarding no longer leaves the
+  dashboard empty. (Found by a context-free onboarding test.)
+
+### Added
+
+- `oneop init` now **excludes the oneop repo itself** and accepts
+  `--exclude a,b` to skip folders by name, so pointing it at a parent directory
+  no longer scaffolds into the tool's own repo.
+- README notes that a playbook's app name comes from `package.json` `name` and
+  may differ from the folder name.
+
 ## [0.1.0] — 2026-06-17
 
 First public release. The "1Password for dev stuff" — a dashboard + CLI that
