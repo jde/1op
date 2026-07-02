@@ -1,12 +1,12 @@
 ---
 name: generate-playbook
-description: Generate or refresh a oneop playbook for the current repo. Detects dev command, port, and seed file, writes /.ops/playbook.yaml (pointers only — never secrets), and symlinks it into the oneop playbooks dir. Use when onboarding a repo to oneop or when its dev/staging/prod access details have drifted.
+description: Generate or refresh a 1op playbook for the current repo. Detects dev command, port, and seed file, writes /.ops/playbook.yaml (pointers only — never secrets), and symlinks it into the 1op playbooks dir. Use when onboarding a repo to 1op or when its dev/staging/prod access details have drifted.
 ---
 
-# Generate a oneop playbook
+# Generate a 1op playbook
 
 Your job: produce `/.ops/playbook.yaml` in the **current repo**, conforming to the
-oneop contract, then symlink it so the dashboard can find it. Playbooks store
+1op contract, then symlink it so the dashboard can find it. Playbooks store
 **pointers, never secrets** — if you are about to write a password, an API key,
 or a token value, stop: write the *source* instead (a seed file path or a
 1Password item name).
@@ -52,7 +52,7 @@ or a token value, stop: write the *source* instead (a seed file path or a
    still wants on the dashboard goes in `/.ops/playbook.local.yaml`, which is
    **never committed**. Ensure the repo ignores it (append if missing):
    ```sh
-   grep -q '.ops/*.local.yaml' .gitignore 2>/dev/null || printf '\n# oneop: sensitive overlay, never commit\n.ops/*.local.yaml\n' >> .gitignore
+   grep -q '.ops/*.local.yaml' .gitignore 2>/dev/null || printf '\n# 1op: sensitive overlay, never commit\n.ops/*.local.yaml\n' >> .gitignore
    ```
    Only create `playbook.local.yaml` if there is actually something sensitive to
    put there — most apps won't need one (seeded dev users are public).
@@ -60,14 +60,14 @@ or a token value, stop: write the *source* instead (a seed file path or a
 7. **Symlink into the playbooks dir** so the dashboard sees it. Symlink the base;
    the dashboard auto-discovers the `.local.yaml` overlay next to the real target:
    ```sh
-   mkdir -p "${ONEOP_PLAYBOOKS_DIR:-$HOME/playbooks}"
-   ln -sf "$(pwd)/.ops/playbook.yaml" "${ONEOP_PLAYBOOKS_DIR:-$HOME/playbooks}/<app>.playbook.yaml"
+   mkdir -p "${OP_PLAYBOOKS_DIR:-$HOME/playbooks}"
+   ln -sf "$(pwd)/.ops/playbook.yaml" "${OP_PLAYBOOKS_DIR:-$HOME/playbooks}/<app>.playbook.yaml"
    ```
 
 8. **Verify before declaring done.** Re-read the COMMITTED file and run the
    secret tripwire mentally (private keys, `AKIA…`, `ghp_…`, `sk-…`, JWTs). If any
    real secret slipped into the committed file, move it to `playbook.local.yaml`.
-   Confirm the symlink resolves: `readlink "${ONEOP_PLAYBOOKS_DIR:-$HOME/playbooks}/<app>.playbook.yaml"`.
+   Confirm the symlink resolves: `readlink "${OP_PLAYBOOKS_DIR:-$HOME/playbooks}/<app>.playbook.yaml"`.
 
 ## Output
 

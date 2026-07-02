@@ -1,5 +1,5 @@
 name: Feature request
-description: Suggest an idea for oneop
+description: Suggest an idea for 1op
 labels: ["enhancement"]
 body:
   - type: textarea
@@ -12,7 +12,7 @@ body:
   - type: textarea
     id: idea
     attributes:
-      label: What would you like oneop to do?
+      label: What would you like 1op to do?
     validations:
       required: true
   - type: checkboxes
@@ -20,5 +20,5 @@ body:
     attributes:
       label: Secret-safety
       options:
-        - label: This can be done without oneop storing any real secret (pointers only).
+        - label: This can be done without 1op storing any real secret (pointers only).
           required: true

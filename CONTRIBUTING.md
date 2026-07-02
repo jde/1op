@@ -1,12 +1,12 @@
-# Contributing to oneop
+# Contributing to 1op
 
-Thanks for wanting to help. oneop is small on purpose — a sharp tool, not a
+Thanks for wanting to help. 1op is small on purpose — a sharp tool, not a
 platform. Contributions that keep it sharp are very welcome.
 
 ## The one non-negotiable rule
 
-**oneop never stores a secret.** Every feature must preserve this. If a change
-would cause oneop to store, commit, render to a deployable surface, or transmit
+**1op never stores a secret.** Every feature must preserve this. If a change
+would cause 1op to store, commit, render to a deployable surface, or transmit
 a real credential, it won't be merged — no matter how convenient. Pointers
 (seed-file paths, 1Password item names) only. When in doubt, read
 [`SECURITY.md`](SECURITY.md) and [`docs/SCHEMA.md`](docs/SCHEMA.md).
@@ -14,11 +14,11 @@ a real credential, it won't be merged — no matter how convenient. Pointers
 ## Setup
 
 ```sh
-git clone https://github.com/jde/oneop.git
-cd oneop
+git clone https://github.com/jde/1op.git
+cd 1op
 pnpm install
 pnpm dev          # dashboard on http://localhost:1134 with example data
-pnpm oneop list   # try the CLI against the bundled examples
+pnpm 1op list   # try the CLI against the bundled examples
 ```
 
 Node `>=20` and `pnpm` are expected.

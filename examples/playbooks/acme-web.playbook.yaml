@@ -4,6 +4,8 @@ app: acme-web
 description: Marketing site + customer dashboard (Turborepo monorepo)
 repo: https://github.com/acme/web
 packageManager: pnpm
+type: real      # filter the dashboard by this — real | experiment | archived | …
+weight: 9       # 1–10 priority; the dashboard sorts highest-first
 
 # Key commands and WHICH FOLDER to run them in — the monorepo lifesaver.
 commands:
@@ -26,7 +28,7 @@ data:
   reset: pnpm db:reset
   seed: pnpm db:seed
 
-# Local dev dependencies oneop stands up and wires into .env.
+# Local dev dependencies 1op stands up and wires into .env.
 # Connection strings here are LOCAL + PUBLIC (localhost, default local creds).
 dependencies:
   - name: db

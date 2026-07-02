@@ -2,10 +2,11 @@ import { promises as fs } from "node:fs";
 import { appendFileSync, existsSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { opEnv } from "./config";
 
 /** Where captured logs live. One JSONL file per app. */
 export function logDir(): string {
-  return process.env.ONEOP_LOG_DIR || path.join(os.homedir(), ".oneop", "logs");
+  return opEnv("LOG_DIR") || path.join(os.homedir(), ".1op", "logs");
 }
 
 export function logPath(app: string): string {
@@ -39,7 +40,7 @@ export async function appendLog(app: string, entry: LogEntry): Promise<void> {
   await fs.appendFile(logPath(app), JSON.stringify(entry) + "\n", "utf8");
 }
 
-/** Synchronous append — used by `oneop run` so a fast-exiting child can't drop lines. */
+/** Synchronous append — used by `1op run` so a fast-exiting child can't drop lines. */
 export function appendLogSync(app: string, entry: LogEntry): void {
   ensureLogDir();
   appendFileSync(logPath(app), JSON.stringify(entry) + "\n", "utf8");

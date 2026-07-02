@@ -6,7 +6,7 @@ export interface EnvKey {
   from: string; // which dependency populated it
 }
 
-/** The env vars oneop can generate from declared deps, with {port} substituted. */
+/** The env vars 1op can generate from declared deps, with {port} substituted. */
 export function managedEnv(pb: Playbook): EnvKey[] {
   const out: EnvKey[] = [];
   for (const d of pb.dependencies ?? []) {
@@ -33,12 +33,12 @@ export function parseEnv(text: string): Map<string, string> {
 
 export interface EnvPlan {
   managed: (EnvKey & { status: "new" | "kept" })[];
-  /** keys in .env.example that no dep populates and .env hasn't set — oneop won't invent these */
+  /** keys in .env.example that no dep populates and .env hasn't set — 1op won't invent these */
   needsValue: string[];
 }
 
 /**
- * Compute what `oneop env` would do without touching anything. Merge-safe:
+ * Compute what `1op env` would do without touching anything. Merge-safe:
  * a key already set in .env is KEPT, never overwritten.
  */
 export function planEnv(pb: Playbook, existingEnv: string, exampleEnv: string): EnvPlan {
@@ -55,11 +55,11 @@ export function planEnv(pb: Playbook, existingEnv: string, exampleEnv: string): 
   return { managed, needsValue };
 }
 
-/** Render the .env block oneop appends (only NEW managed keys; never rewrites existing lines). */
+/** Render the .env block 1op appends (only NEW managed keys; never rewrites existing lines). */
 export function renderEnvBlock(plan: EnvPlan): string {
   const fresh = plan.managed.filter((m) => m.status === "new");
   if (!fresh.length) return "";
-  const lines = ["", "# --- oneop-managed: local dependency connection strings (public, localhost) ---"];
+  const lines = ["", "# --- 1op-managed: local dependency connection strings (public, localhost) ---"];
   for (const m of fresh) lines.push(`${m.key}=${m.value}`);
   return lines.join("\n") + "\n";
 }

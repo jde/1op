@@ -1,10 +1,10 @@
 <div align="center">
 
-# 🔑 oneop
+# 🔑 1op
 
-**1Password's chaotic dev cousin.** · [oneop.dev](https://oneop.dev)
+**1Password's chaotic dev cousin.** · [1op.dev](https://1op.dev)
 
-[![CI](https://github.com/jde/oneop/actions/workflows/ci.yml/badge.svg)](https://github.com/jde/oneop/actions/workflows/ci.yml)
+[![CI](https://github.com/jde/1op/actions/workflows/ci.yml/badge.svg)](https://github.com/jde/1op/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 ![Stores zero secrets](https://img.shields.io/badge/secrets%20stored-0-success)
@@ -19,7 +19,7 @@ forgotten, and three integrations whose dashboards live in your browser history.
 1Password is great for the stable secrets — and useless for all of *that*,
 because *that* changes every week.
 
-oneop is the place you look first and always get where you're going. It's a
+1op is the place you look first and always get where you're going. It's a
 dashboard of every app: URLs, the commands (and which folder to run them in),
 your seeded dev logins, and a cue for where the real creds live — **without ever
 storing a single secret.**
@@ -30,10 +30,10 @@ storing a single secret.**
 ## The trick: it stores pointers, not values
 
 A dev environment is chaos because its *values* churn — ports move, databases
-get reseeded, previews get torn down. So oneop never stores values. It stores the
+get reseeded, previews get torn down. So 1op never stores values. It stores the
 **source** of the value, which doesn't churn:
 
-| Thing you forget | What oneop stores | Why it never goes stale |
+| Thing you forget | What 1op stores | Why it never goes stale |
 |---|---|---|
 | Dev login | The path to your committed `seed.ts` | It's the actual source of truth; read live |
 | Staging / prod creds | The **name** of the 1Password item | A label, not a secret |
@@ -41,7 +41,7 @@ get reseeded, previews get torn down. So oneop never stores values. It stores th
 | That one integration dashboard | Its URL + vault item name | Just a bookmark |
 
 Seeded dev users are **public** — they only work on `localhost` and they already
-live in your committed code. So oneop shows them to you directly. Everything
+live in your committed code. So 1op shows them to you directly. Everything
 genuinely sensitive stays in 1Password, or in a per-repo file git never sees.
 
 ## Where data lives (and what this repo is)
@@ -73,13 +73,13 @@ pnpm dev          # http://localhost:1134 — boots with fake EXAMPLE data
 Point it at your real apps:
 
 ```sh
-export ONEOP_PLAYBOOKS_DIR="$HOME/playbooks"   # or anywhere
+export OP_PLAYBOOKS_DIR="$HOME/playbooks"   # or anywhere
 # then, in each app, generate a playbook (see below) and symlink it in
 ```
 
 ## Onboarding your projects
 
-### Fast path: `oneop init` (scans the filesystem for you)
+### Fast path: `1op init` (scans the filesystem for you)
 
 Point it at the folder that holds your repos. It scans every subdirectory that
 looks like a project and writes a starter `.ops/playbook.yaml` into each —
@@ -88,19 +88,19 @@ detecting the package manager, the dev command, the port, and the seed file. It
 paths); it never copies a credential.
 
 ```sh
-oneop init ~/code --dry      # preview what it would create, write nothing
-oneop init ~/code --link     # create the files AND symlink them into ~/playbooks
-export ONEOP_PLAYBOOKS_DIR="$HOME/playbooks" && pnpm dev   # see them on the dashboard
+1op init ~/code --dry      # preview what it would create, write nothing
+1op init ~/code --link     # create the files AND symlink them into ~/playbooks
+export OP_PLAYBOOKS_DIR="$HOME/playbooks" && pnpm dev   # see them on the dashboard
 ```
 
 It skips any repo that already has a playbook (but with `--link` it will still
 symlink an existing one), gitignores the `.ops/*.local.yaml` overlay, excludes
-the oneop repo itself, and leaves `TODO`s where it needs a human (staging URLs,
+the 1op repo itself, and leaves `TODO`s where it needs a human (staging URLs,
 which 1Password item, your seeded dev users). Fill those in per
 [`docs/SCHEMA.md`](docs/SCHEMA.md).
 
 ```sh
-oneop init ~/code --link --exclude legacy,scratch   # skip specific folders by name
+1op init ~/code --link --exclude legacy,scratch   # skip specific folders by name
 ```
 
 > An app's dashboard name comes from its `package.json` `name`, which can differ
@@ -116,22 +116,22 @@ output, more detail filled in.
 
 ## The CLI — your dev keyring, and an agent's too
 
-oneop ships a CLI built to be driven by **both you and a coding agent** (so the
+1op ships a CLI built to be driven by **both you and a coding agent** (so the
 agent can log in and read your errors instead of you copy-pasting them):
 
 ```sh
-oneop init ~/code --link                # scan a folder, scaffold a playbook per project
-oneop list                              # every app it knows about
-oneop creds acme-web                    # dev logins — REDACTED by default
-oneop creds acme-web --reveal           # show dev passwords
-oneop creds acme-web --json             # structured, for an agent to drive with
-oneop creds acme-web --env prod --json  # POINTER ONLY — oneop never holds prod creds
-oneop env  acme-web                     # preview .env from declared deps (dry run)
-oneop env  acme-web --write             # write missing dep keys — never clobbers yours
-oneop check                             # enforce the data standard across all apps (CI-gateable)
-oneop data acme-web fresh               # reset (baseline) then seed (userland), in order
-oneop run  acme-web                     # run its start cmd, capturing logs
-oneop logs acme-web --errors --since 5m --json   # you OR the agent read live errors
+1op init ~/code --link                # scan a folder, scaffold a playbook per project
+1op list                              # every app it knows about
+1op creds acme-web                    # dev logins — REDACTED by default
+1op creds acme-web --reveal           # show dev passwords
+1op creds acme-web --json             # structured, for an agent to drive with
+1op creds acme-web --env prod --json  # POINTER ONLY — 1op never holds prod creds
+1op env  acme-web                     # preview .env from declared deps (dry run)
+1op env  acme-web --write             # write missing dep keys — never clobbers yours
+1op check                             # enforce the data standard across all apps (CI-gateable)
+1op data acme-web fresh               # reset (baseline) then seed (userland), in order
+1op run  acme-web                     # run its start cmd, capturing logs
+1op logs acme-web --errors --since 5m --json   # you OR the agent read live errors
 ```
 
 The bright line, enforced in code: **dev creds are public (seeded, localhost-only)
@@ -150,28 +150,28 @@ cannot dereference.** Passwords are redacted unless you ask with `--reveal`/`--j
 
 See [`docs/SCHEMA.md`](docs/SCHEMA.md) for the full contract.
 
-If you ever find a way to make oneop leak a secret, that's a security bug, not a
+If you ever find a way to make 1op leak a secret, that's a security bug, not a
 feature request — see [`SECURITY.md`](SECURITY.md).
 
 ## Status
 
 Early but real (`v0.1`). The dashboard, the playbook contract + secret tripwire,
-the `generate-playbook` skill, and the `oneop` CLI (`list` / `creds` / `env` /
+the `generate-playbook` skill, and the `1op` CLI (`list` / `creds` / `env` /
 `run` / `logs`) all work and are exercised in CI. Standing up dependency
-containers (`oneop up` / `bootstrap`) is designed into the schema but not yet
+containers (`1op up` / `bootstrap`) is designed into the schema but not yet
 built — see [the roadmap](#roadmap).
 
 ## Roadmap
 
-- `oneop scan` / `status` + a standard `/health` endpoint convention
-- `oneop up` / `bootstrap` — stand up declared deps (db/cache/queue/storage) and
+- `1op scan` / `status` + a standard `/health` endpoint convention
+- `1op up` / `bootstrap` — stand up declared deps (db/cache/queue/storage) and
   seed, turning a fresh checkout into a running dev env in one command
 - A `*.localhost` reverse proxy so you never type a port again
 
 ## Contributing
 
 PRs welcome. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup and the one
-non-negotiable rule (oneop never stores a secret), and
+non-negotiable rule (1op never stores a secret), and
 [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) for how we treat each other.
 
 ## License

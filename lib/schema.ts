@@ -1,5 +1,5 @@
 /**
- * The oneop contract.
+ * The 1op contract.
  *
  * A playbook describes how to GET INTO an app across environments. It stores
  * POINTERS, never secrets:
@@ -53,7 +53,7 @@ export interface Integration {
 }
 
 /**
- * A dev-environment dependency oneop can stand up locally (db, cache, queue,
+ * A dev-environment dependency 1op can stand up locally (db, cache, queue,
  * object storage…). The `env` map is the magic: the connection strings this
  * dep populates in your `.env`. These are LOCAL and PUBLIC (localhost, default
  * local passwords) — safe to generate, just like seeded users.
@@ -70,7 +70,7 @@ export interface Dependency {
 }
 
 /**
- * The two-script data standard oneop enforces for dev work:
+ * The two-script data standard 1op enforces for dev work:
  *
  *   reset → clears the DB and loads the app BASELINE: the categories, tags,
  *           types, required image uploads, and base data the app needs to
@@ -78,7 +78,7 @@ export interface Dependency {
  *   seed  → adds USERLAND sample data on top (assumes reset has run) so the app
  *           runs in a realistic, non-empty state.
  *
- * `oneop check` flags any app missing either; `oneop data <app> fresh` runs
+ * `1op check` flags any app missing either; `1op data <app> fresh` runs
  * them in the correct order (reset, then seed).
  */
 export interface DataStandard {
@@ -90,13 +90,26 @@ export interface Playbook {
   app: string;
   description?: string;
   repo?: string;
+  /**
+   * How you classify this project so you can filter the dashboard down to just
+   * the ones you care about right now. Free-form — "real", "experiment",
+   * "archived", whatever taxonomy you keep. SUGGESTED_TYPES are only hints for
+   * the picker; you are not limited to them.
+   */
+  type?: string;
+  /**
+   * Priority weight, 1 (low) – 10 (high). The dashboard sorts by this so your
+   * most important apps float to the top. Out-of-range or non-numeric values
+   * are clamped/ignored at load time.
+   */
+  weight?: number;
   /** Resolve relative seedFile paths against this. Defaults to the playbook's own dir. */
   repoRoot?: string;
   /** npm | pnpm | yarn | bun — so you stop guessing which one this repo uses. */
   packageManager?: "npm" | "pnpm" | "yarn" | "bun";
   /** Key commands and where to run them. The monorepo lifesaver. */
   commands?: Command[];
-  /** Local dev dependencies oneop can stand up + wire into .env. */
+  /** Local dev dependencies 1op can stand up + wire into .env. */
   dependencies?: Dependency[];
   /** The enforced two-script data standard: reset (baseline) + seed (userland). */
   data?: DataStandard;
@@ -109,6 +122,24 @@ export interface Playbook {
 
 export const ENV_ORDER = ["dev", "staging", "prod"] as const;
 export type EnvName = (typeof ENV_ORDER)[number];
+
+/** Hints for the type picker. Not enforced — any string is valid. */
+export const SUGGESTED_TYPES = ["real", "experiment", "archived"] as const;
+
+/** Sort key for a playbook: its weight, or 0 so unweighted apps sink below weighted ones. */
+export function weightOf(pb: Playbook): number {
+  return typeof pb.weight === "number" ? pb.weight : 0;
+}
+
+/** Default dashboard order: weight high→low, ties broken by app name A→Z. */
+export function byWeightThenName(a: Playbook, b: Playbook): number {
+  return weightOf(b) - weightOf(a) || a.app.localeCompare(b.app);
+}
+
+/** The distinct, non-empty `type`s across a set of playbooks, sorted — drives the filter. */
+export function projectTypes(pbs: Playbook[]): string[] {
+  return [...new Set(pbs.map((p) => p.type).filter((t): t is string => !!t))].sort();
+}
 
 /**
  * Patterns that look like real secrets. A playbook that trips these is
@@ -165,7 +196,7 @@ export interface DataCheck {
 export function checkDataStandard(pb: Playbook): DataCheck {
   const issues: string[] = [];
   const d = pb.data;
-  // A TODO placeholder (from `oneop init`) is not a real command.
+  // A TODO placeholder (from `1op init`) is not a real command.
   const real = (s?: string) => !!s && !s.trim().startsWith("TODO");
   const hasReset = real(d?.reset);
   const hasSeed = real(d?.seed);
@@ -190,5 +221,13 @@ export function validate(p: unknown, file: string): Playbook {
   const obj = p as Record<string, unknown>;
   if (typeof obj.app !== "string" || !obj.app) throw new Error(`${file}: missing "app"`);
   if (typeof obj.envs !== "object" || obj.envs === null) throw new Error(`${file}: missing "envs"`);
-  return { ...(obj as object), _file: file } as Playbook;
+  const pb = { ...(obj as object), _file: file } as Playbook;
+  // Normalize the two filter/sort fields so the dashboard never chokes on a
+  // stray blank string or an out-of-range weight someone typed by hand.
+  pb.type = typeof pb.type === "string" && pb.type.trim() ? pb.type.trim() : undefined;
+  if (pb.weight != null) {
+    const n = Math.round(Number(pb.weight));
+    pb.weight = Number.isFinite(n) ? Math.min(10, Math.max(1, n)) : undefined;
+  }
+  return pb;
 }

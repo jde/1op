@@ -2,7 +2,7 @@ import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 
 /**
- * Filesystem detection for `oneop init`. Reads only NON-SECRET facts (package
+ * Filesystem detection for `1op init`. Reads only NON-SECRET facts (package
  * scripts, lockfiles, the PORT number, seed-file paths). It never reads or
  * stores a credential value — a generated playbook holds pointers only.
  */
@@ -130,6 +130,8 @@ export function starterPlaybook(d: Detected): Record<string, unknown> {
 
   const pb: Record<string, unknown> = { app: d.app };
   if (d.packageManager) pb.packageManager = d.packageManager;
+  pb.type = "real"; // real | experiment | archived | … — filter the dashboard by this
+  pb.weight = 5; // 1–10 priority; the dashboard sorts highest-first
   // Enforce the two-script data standard: always scaffold both, TODO what's missing.
   pb.data = {
     reset: d.resetCmd ?? "TODO: clear DB + load baseline (categories/tags/types/base data)",

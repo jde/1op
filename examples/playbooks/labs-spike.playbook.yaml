@@ -1,0 +1,15 @@
+# Example playbook — fake, safe to publish. A throwaway spike, so it's a low
+# weight and filtered out when you switch the dashboard to type=real.
+app: labs-spike
+description: Weekend spike — testing an idea, not load-bearing
+repo: https://github.com/acme/labs-spike
+packageManager: pnpm
+type: experiment
+weight: 2
+envs:
+  dev:
+    url: http://localhost:4321
+    start: pnpm dev
+    accounts:
+      source: inline-nonsecret
+      note: no auth — it's a spike

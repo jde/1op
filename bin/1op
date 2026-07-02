@@ -1,3 +1,3 @@
 #!/usr/bin/env bash
-# Thin launcher so `oneop` works whether linked globally or run from the repo.
+# Thin launcher so `1op` works whether linked globally or run from the repo.
 exec npx --no-install tsx "$(dirname "$0")/cli.ts" "$@"

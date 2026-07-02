@@ -1,4 +1,4 @@
-# The oneop playbook contract
+# The 1op playbook contract
 
 One playbook per repo, at `/.ops/playbook.yaml`. It stores **pointers, never
 secrets**. The dashboard reads many playbooks and renders one card per app.
@@ -21,6 +21,8 @@ app: acme-web                      # required. one per repo.
 description: Marketing + dashboard # optional
 repo: https://github.com/acme/web  # optional
 packageManager: pnpm               # npm | pnpm | yarn | bun
+type: real                         # free-form: real | experiment | archived | …  (filter the dashboard by it)
+weight: 9                          # 1–10 priority; the dashboard sorts highest-first
 
 # Key commands and WHICH FOLDER to run them in (monorepo lifesaver)
 commands:
@@ -51,6 +53,19 @@ integrations:
   - { name: Stripe, url: https://dashboard.stripe.com, vaultItem: Acme — Stripe }
 ```
 
+## Filtering & sorting: `type` and `weight`
+
+So you can cut a wall of apps down to the ones you want right now:
+
+| Field | Values | What it does |
+|---|---|---|
+| `type` | any string — `real`, `experiment`, `archived`, … | The dashboard's **type** dropdown is built from the types your playbooks actually use; pick one to show only those. `1op list --type experiment` does the same on the CLI. |
+| `weight` | `1`–`10` (10 = most important) | The dashboard sorts **weight high→low** by default so your load-bearing apps sit at the top; unweighted apps sink to the bottom. Switch to A→Z with the **sort** dropdown or `1op list --sort name`. |
+
+Both are optional and free of consequence — they only affect ordering and
+filtering, never what's stored. `1op init` scaffolds `type: real`, `weight: 5`
+so new apps start sortable; adjust per repo.
+
 ## `accounts.source` values
 
 | source | use for | what you write |
@@ -61,8 +76,8 @@ integrations:
 
 ## The data standard (enforced)
 
-Every app with a database declares **two** scripts — oneop holds the line via
-`oneop check`:
+Every app with a database declares **two** scripts — 1op holds the line via
+`1op check`:
 
 ```yaml
 data:
@@ -75,9 +90,9 @@ data:
 | `reset` | yes | Baseline: categories, tags, types, required image uploads, base data | "factory, no users" |
 | `seed` | no (assumes reset ran) | Userland sample data so the app isn't empty | "as if people have used it" |
 
-- `oneop check [app]` reports compliance and exits non-zero if any app is
+- `1op check [app]` reports compliance and exits non-zero if any app is
   missing either — so CI can gate on it.
-- `oneop data <app> reset|seed|fresh` runs them; `fresh` = reset then seed, in
+- `1op data <app> reset|seed|fresh` runs them; `fresh` = reset then seed, in
   order. It refuses a `TODO` placeholder and warns if you seed with no baseline.
 
 ## The one rule

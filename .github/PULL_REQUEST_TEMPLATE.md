@@ -4,7 +4,7 @@
 
 ## The non-negotiable
 
-- [ ] This change does **not** cause oneop to store, commit, render to a
+- [ ] This change does **not** cause 1op to store, commit, render to a
       deployable surface, or transmit a real secret. Pointers only.
 
 ## Verification

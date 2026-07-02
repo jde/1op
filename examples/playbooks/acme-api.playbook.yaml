@@ -2,6 +2,8 @@
 app: acme-api
 description: REST + webhooks backend
 repo: https://github.com/acme/api
+type: real
+weight: 6
 envs:
   dev:
     url: http://localhost:8787
