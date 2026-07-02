@@ -1,29 +1,59 @@
 import { loadPlaybooks, readSeed } from "@/lib/playbooks";
-import { ENV_ORDER, type EnvSpec, type Integration, type Playbook } from "@/lib/schema";
+import {
+  ENV_ORDER,
+  byWeightThenName,
+  projectTypes,
+  type EnvSpec,
+  type Integration,
+  type Playbook,
+} from "@/lib/schema";
+import { Controls } from "./Controls";
+import { EnvTabs } from "./EnvTabs";
+import { CardShell } from "./CardShell";
 
 export const dynamic = "force-dynamic"; // always read fresh from disk
 
-export default async function Home() {
-  const { playbooks, isExample, dir, errors } = await loadPlaybooks();
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<{ type?: string; sort?: string }>;
+}) {
+  const { type, sort } = await searchParams;
+  const { playbooks, isExample, dir, errors, snapshotTakenAt } = await loadPlaybooks();
+
+  const types = projectTypes(playbooks);
+  const filtered = type ? playbooks.filter((p) => p.type === type) : playbooks;
+  const sorted =
+    sort === "name"
+      ? [...filtered].sort((a, b) => a.app.localeCompare(b.app))
+      : [...filtered].sort(byWeightThenName);
 
   return (
     <main className="wrap">
       <header className="top">
-        <h1>🔑 oneop</h1>
+        <h1>🔑 1op</h1>
         <span className="tag">your dev keyring — every app, every env, zero secrets stored</span>
       </header>
 
       {isExample && (
         <div className="banner warn">
           Showing bundled <strong>example</strong> data (all fake). Point{" "}
-          <code>ONEOP_PLAYBOOKS_DIR</code> at your symlink farm — or drop playbooks in{" "}
+          <code>OP_PLAYBOOKS_DIR</code> at your symlink farm — or drop playbooks in{" "}
           <code>~/playbooks</code> — to see your real apps.
         </div>
       )}
-      {!isExample && (
+      {snapshotTakenAt ? (
         <div className="banner">
-          Reading {playbooks.length} playbook{playbooks.length === 1 ? "" : "s"} from <code>{dir}</code>.
+          📸 Hosted snapshot of {playbooks.length} app{playbooks.length === 1 ? "" : "s"} — taken{" "}
+          <strong>{timeAgo(snapshotTakenAt)}</strong>. Dev creds live on your machine; this view is
+          pointers only.
         </div>
+      ) : (
+        !isExample && (
+          <div className="banner">
+            Reading {playbooks.length} playbook{playbooks.length === 1 ? "" : "s"} from <code>{dir}</code>.
+          </div>
+        )
       )}
 
       {errors.map((e) => (
@@ -32,32 +62,57 @@ export default async function Home() {
         </div>
       ))}
 
-      {playbooks.map((pb) => (
-        <AppCard key={pb._file ?? pb.app} pb={pb} />
+      {playbooks.length > 0 && (
+        <Controls types={types} count={sorted.length} total={playbooks.length} />
+      )}
+
+      {groupByType(sorted).map((group) => (
+        <section className="type-group" key={group.name}>
+          <h2 className="group-title">
+            {group.name}
+            <span className="group-count">{group.items.length}</span>
+          </h2>
+          {group.items.map((pb) => (
+            <AppCard key={pb._file ?? pb.app} pb={pb} />
+          ))}
+        </section>
       ))}
 
+      {playbooks.length > 0 && sorted.length === 0 && (
+        <div className="banner">
+          No apps of type <code>{type}</code>. <a href="/">Clear the filter.</a>
+        </div>
+      )}
+
       <footer className="foot">
-        oneop stores pointers, never secrets. Dev creds are read live from your seed files; staging &
+        1op stores pointers, never secrets. Dev creds are read live from your seed files; staging &
         prod show only the name of the vault item to open.
       </footer>
     </main>
   );
 }
 
-async function AppCard({ pb }: { pb: Playbook }) {
-  return (
-    <section className="app-card">
-      <div className="head">
-        <h2>{pb.app}</h2>
-        {pb.packageManager && <span className="pm">{pb.packageManager}</span>}
-        {pb.description && <span className="desc">{pb.description}</span>}
-        {pb.repo && (
-          <span className="desc">
-            · <a href={pb.repo}>repo ↗</a>
-          </span>
-        )}
-      </div>
+function AppCard({ pb }: { pb: Playbook }) {
+  const meta = (
+    <>
+      {pb.type && <span className="ptype">{pb.type}</span>}
+      {typeof pb.weight === "number" && (
+        <span className="weight" title="priority weight (1–10)">
+          ⚖ {pb.weight}
+        </span>
+      )}
+      {pb.packageManager && <span className="pm">{pb.packageManager}</span>}
+      {pb.description && <span className="desc">{pb.description}</span>}
+      {pb.repo && (
+        <span className="desc">
+          · <a href={pb.repo}>repo ↗</a>
+        </span>
+      )}
+    </>
+  );
 
+  return (
+    <CardShell app={pb.app} meta={meta}>
       {pb.commands && pb.commands.length > 0 && (
         <div className="commands">
           {pb.commands.map((c, i) => (
@@ -100,11 +155,8 @@ async function AppCard({ pb }: { pb: Playbook }) {
         </div>
       )}
 
-      <div className="envs">
-        {ENV_ORDER.filter((name) => pb.envs[name]).map((name) => (
-          <EnvCell key={name} name={name} env={pb.envs[name]!} pb={pb} />
-        ))}
-      </div>
+      <Envs pb={pb} />
+
 
       {pb.integrations && pb.integrations.length > 0 && (
         <div className="integrations">
@@ -114,8 +166,57 @@ async function AppCard({ pb }: { pb: Playbook }) {
           ))}
         </div>
       )}
-    </section>
+    </CardShell>
   );
+}
+
+/**
+ * Group cards into separate lists by their `type` tag. The buckets render in a
+ * fixed priority order (Professional → Experiments → Personal); any other tag
+ * follows alphabetically, and anything untagged sinks to the bottom. Card order
+ * WITHIN each group is preserved from the already-sorted input.
+ */
+const TYPE_ORDER = ["Professional", "Experiments", "Personal"];
+const UNTAGGED = "Untagged";
+
+function groupByType(playbooks: Playbook[]): { name: string; items: Playbook[] }[] {
+  const groups = new Map<string, Playbook[]>();
+  for (const pb of playbooks) {
+    const key = pb.type?.trim() || UNTAGGED;
+    (groups.get(key) ?? groups.set(key, []).get(key)!).push(pb);
+  }
+  const rank = (name: string) => {
+    const i = TYPE_ORDER.indexOf(name);
+    if (i !== -1) return [0, i, ""] as const;
+    if (name === UNTAGGED) return [2, 0, name] as const;
+    return [1, 0, name] as const;
+  };
+  return [...groups.entries()]
+    .map(([name, items]) => ({ name, items }))
+    .sort((a, b) => {
+      const [ag, ai, an] = rank(a.name);
+      const [bg, bi, bn] = rank(b.name);
+      return ag - bg || ai - bi || an.localeCompare(bn);
+    });
+}
+
+/** "6 min ago" / "2 hours ago" — how stale the hosted snapshot is at a glance. */
+function timeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return "unknown";
+  const secs = Math.max(0, Math.round((Date.now() - then) / 1000));
+  const units: [number, string][] = [
+    [86400, "day"],
+    [3600, "hour"],
+    [60, "min"],
+  ];
+  for (const [size, label] of units) {
+    if (secs >= size) {
+      const n = Math.floor(secs / size);
+      return `${n} ${label}${n === 1 ? "" : "s"} ago`;
+    }
+  }
+  return "just now";
 }
 
 function IntegrationChip({ it }: { it: Integration }) {
@@ -126,6 +227,26 @@ function IntegrationChip({ it }: { it: Integration }) {
       {it.vaultItem && <span className="int-vault">🔐 {it.vaultItem}</span>}
     </span>
   );
+}
+
+/**
+ * One environment → a plain full-width cell. Two or three → tabs, so you scan
+ * one env at a time instead of three competing columns. The cells are rendered
+ * here (server) and handed to the client tab switcher already-built.
+ */
+function Envs({ pb }: { pb: Playbook }) {
+  const present = ENV_ORDER.filter((name) => pb.envs[name]);
+  if (present.length === 0) return null;
+
+  const cells = present.map((name) => ({
+    name,
+    node: <EnvCell name={name} env={pb.envs[name]!} pb={pb} />,
+  }));
+
+  if (cells.length === 1) {
+    return <div className="envs single">{cells[0].node}</div>;
+  }
+  return <EnvTabs envs={cells} />;
 }
 
 async function EnvCell({ name, env, pb }: { name: string; env: EnvSpec; pb: Playbook }) {

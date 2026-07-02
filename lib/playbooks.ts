@@ -8,16 +8,25 @@ import {
   validate,
   type Playbook,
 } from "./schema";
+import { parseSnapshot } from "./snapshot";
+import { opEnv } from "./config";
+
+/** True when this process should render a hosted snapshot instead of local disk. */
+export function snapshotSource(): { file?: string; url?: string } | null {
+  const file = opEnv("SNAPSHOT_FILE");
+  const url = opEnv("SNAPSHOT_URL");
+  return file || url ? { file, url } : null;
+}
 
 /**
  * Where to look for playbooks, in order:
- *   1. $ONEOP_PLAYBOOKS_DIR  (your symlink farm, e.g. ~/playbooks)
+ *   1. $OP_PLAYBOOKS_DIR     (your symlink farm, e.g. ~/playbooks)
  *   2. ~/playbooks            (the convention)
  *   3. ./examples/playbooks   (bundled safe demo data, so a fresh clone Just Works)
  */
 export async function playbooksDir(): Promise<{ dir: string; isExample: boolean }> {
   const candidates = [
-    process.env.ONEOP_PLAYBOOKS_DIR,
+    opEnv("PLAYBOOKS_DIR"),
     path.join(os.homedir(), "playbooks"),
   ].filter(Boolean) as string[];
 
@@ -41,9 +50,50 @@ export interface LoadResult {
   isExample: boolean;
   dir: string;
   errors: { file: string; message: string }[];
+  /** Set only in hosted mode: when the rendered snapshot was taken (ISO). */
+  snapshotTakenAt?: string;
 }
 
-export async function loadPlaybooks(): Promise<LoadResult> {
+/**
+ * Load the hosted snapshot bundle, if one is configured. The dashboard running
+ * on Vercel reads its apps from here instead of scanning a local disk it doesn't
+ * have. `OP_SNAPSHOT_FILE` (local path, for testing) wins over
+ * `OP_SNAPSHOT_URL` (the Blob URL, in production).
+ */
+async function loadFromSnapshot(src: { file?: string; url?: string }): Promise<LoadResult> {
+  const where = src.file ?? src.url!;
+  try {
+    const raw = src.file
+      ? await fs.readFile(src.file, "utf8")
+      : await (await fetch(src.url!, { cache: "no-store" })).text();
+    const snap = parseSnapshot(raw);
+    return {
+      playbooks: snap.playbooks,
+      isExample: false,
+      dir: where,
+      errors: [],
+      snapshotTakenAt: snap.takenAt,
+    };
+  } catch (e) {
+    return {
+      playbooks: [],
+      isExample: false,
+      dir: where,
+      errors: [{ file: "snapshot", message: e instanceof Error ? e.message : String(e) }],
+    };
+  }
+}
+
+/**
+ * @param opts.committedOnly Skip the gitignored local overlay. Used by
+ *   `1op publish` so a snapshot never carries the sensitive bits.
+ */
+export async function loadPlaybooks(opts?: { committedOnly?: boolean }): Promise<LoadResult> {
+  // Hosted render: read the projected bundle, not the (absent) local disk.
+  // `committedOnly` is a local publish path, so it always reads from disk.
+  const hosted = snapshotSource();
+  if (hosted && !opts?.committedOnly) return loadFromSnapshot(hosted);
+
   const { dir, isExample } = await playbooksDir();
   const files = (await fs.readdir(dir))
     .filter((f) => f.endsWith(".yaml") || f.endsWith(".yml"))
@@ -68,9 +118,12 @@ export async function loadPlaybooks(): Promise<LoadResult> {
       let merged = validate(YAML.parse(raw) ?? {}, full) as Playbook;
 
       // Overlay the gitignored local file if present. This is the sanctioned
-      // home for sensitive bits, so it is NOT secret-scanned — it never reaches git.
-      const overlay = await readLocalOverlay(full);
-      if (overlay) merged = mergePlaybook(merged, overlay);
+      // home for sensitive bits, so it is NOT secret-scanned — it never reaches
+      // git. `committedOnly` (publish) skips it so it never reaches a snapshot.
+      if (!opts?.committedOnly) {
+        const overlay = await readLocalOverlay(full);
+        if (overlay) merged = mergePlaybook(merged, overlay);
+      }
 
       playbooks.push(merged);
     } catch (e) {
@@ -126,6 +179,11 @@ export async function readSeed(
   pb: Playbook,
   seedFile: string
 ): Promise<{ ok: true; content: string; path: string } | { ok: false; error: string }> {
+  // Hosted: the repo isn't on this machine, and dev creds are localhost-only
+  // anyway. Point the human back to their own box rather than failing cryptically.
+  if (snapshotSource()) {
+    return { ok: false, error: "dev seed lives on your machine — run `1op creds <app> --reveal` there" };
+  }
   const base = pb.repoRoot
     ? pb.repoRoot
     : pb._file

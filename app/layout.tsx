@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "oneop — your dev keyring",
+  title: "1op — your dev keyring",
   description: "Every app's URLs and where its creds live. No secrets stored, ever.",
 };
 
