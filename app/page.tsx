@@ -105,7 +105,7 @@ function AppCard({ pb }: { pb: Playbook }) {
       {pb.description && <span className="desc">{pb.description}</span>}
       {pb.repo && (
         <span className="desc">
-          · <a href={pb.repo}>repo ↗</a>
+          · <a href={pb.repo} target="_blank" rel="noopener noreferrer">repo ↗</a>
         </span>
       )}
     </>
@@ -220,7 +220,13 @@ function timeAgo(iso: string): string {
 }
 
 function IntegrationChip({ it }: { it: Integration }) {
-  const label = it.url ? <a href={it.url}>{it.name} ↗</a> : <span>{it.name}</span>;
+  const label = it.url ? (
+    <a href={it.url} target="_blank" rel="noopener noreferrer">
+      {it.name} ↗
+    </a>
+  ) : (
+    <span>{it.name}</span>
+  );
   return (
     <span className="int" title={it.note}>
       {label}
@@ -254,7 +260,7 @@ async function EnvCell({ name, env, pb }: { name: string; env: EnvSpec; pb: Play
     <div className={`env ${name}`}>
       <div className="name">{name}</div>
       {env.url && (
-        <a className="url" href={env.url}>
+        <a className="url" href={env.url} target="_blank" rel="noopener noreferrer">
           {env.url}
         </a>
       )}
